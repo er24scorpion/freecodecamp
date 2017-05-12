@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="pomodoroApp">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no, width=device-width">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.1/angular.min.js"></script>
+
+    <script src="https://rawgit.com/jossef/angular-timer/master/dist/angular-timer.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment-with-locales.min.js"></script>
+    <script src="https://rawgit.com/EvanHahn/HumanizeDuration.js/master/humanize-duration.js"></script>
+
+</head>
+
+<script>
+    angular.module("pomodoroApp", ['timer'])
+        .controller("mainController", function($scope, $timeout) {
+
+            $scope.init = function() {
+                $scope.breakLength = 10;
+                $scope.sessionLength = 25;
+                $scope.seconds = 0;
+                $scope.timerRunning = false;
+                $scope.isSession = true;
+                $scope.actionType = "SESSION";
+                $scope.minutes = $scope.sessionLength;
+            }
+
+            $scope.init();
+            $scope.lessBreak = function() {
+                if (!$scope.timerRunning && $scope.breakLength > 0) {
+                    $scope.breakLength--;
+                    if (!$scope.isSession) {
+                        $scope.seconds = 0;
+                        $scope.minutes = $scope.breakLength;
+                        $scope.$broadcast('timer-set-countdown', $scope.breakLength * 60);
+                    }
+                }
+            }
+            $scope.moreBreak = function() {
+                if (!$scope.timerRunning) {
+                    $scope.breakLength++;
+                    if (!$scope.isSession) {
+                        $scope.seconds = 0;
+                        $scope.minutes = $scope.breakLength;
+                        $scope.$broadcast('timer-set-countdown', $scope.breakLength * 60);
+                    }
+                }
+            }
+
+            $scope.lessSession = function() {
+                if (!$scope.timerRunning && $scope.sessionLength > 0) {
+                    $scope.sessionLength--;
+                    if ($scope.isSession) {
+                        $scope.seconds = 0;
+                        $scope.minutes = $scope.sessionLength;
+                        $scope.$broadcast('timer-set-countdown', $scope.sessionLength * 60);
+                    }
+                }
+            }
+            $scope.moreSession = function() {
+                if (!$scope.timerRunning) {
+                    $scope.sessionLength++;
+                    if ($scope.isSession) {
+                        $scope.minutes = $scope.sessionLength;
+                        $scope.$broadcast('timer-set-countdown', $scope.sessionLength * 60);
+                        $scope.seconds = 0;
+                    }
+                }
+            }
+
+            $scope.toggleTimer = function() {
+                if ($scope.timerRunning) {
+                    $scope.$broadcast('timer-stop');
+                    $scope.timerRunning = false;
+                } else {
+                    $scope.$broadcast('timer-start');
+                    $scope.timerRunning = true;
+                }
+            }
+
+            $scope.reset = function() {
+                $scope.$broadcast('timer-clear');
+                $scope.init();
+            }
+
+            $scope.$on('timer-stopped', function(event, data) {
+                if (data.millis === 0 && data.seconds === 0 && data.minutes === 0) {
+                    if ($scope.isSession) {
+                        $scope.$broadcast('timer-set-countdown', $scope.breakLength * 60);
+                        $scope.$broadcast('timer-start');
+                        $scope.timerRunning = true;
+                        $scope.isSession = false;
+                        $scope.$apply(function() {
+                            $scope.actionType = "BREAK";
+                        });
+                    } else {
+                        $scope.$broadcast('timer-set-countdown', $scope.sessionLength * 60);
+                        $scope.$broadcast('timer-start');
+                        $scope.timerRunning = true;
+                        $scope.$apply(function() {
+                            $scope.actionType = "SESSION";
+                        });
+                        $scope.isSession = true;
+                    }
+                }
+            });
+        });
+
+</script>
+
+<body ng-controller="mainController">
+    <div>
+        <span>Break length:</span>
+        <button ng-click="lessBreak()">-</button>
+        <input type="number" ng-model="breakLength">
+        <button ng-click="moreBreak()">+</button>
+    </div>
+    <div>
+        <span>Session length:</span>
+        <button ng-click="lessSession()">-</button>
+        <input type="number" ng-model="sessionLength">
+        <button ng-click="moreSession()">+</button>
+    </div>
+
+    <div id="clock">
+
+        <span>{{actionType}}:</span>
+
+        <timer autoStart="false" interval="1000" countdown="sessionLength*60">
+            {{minutes}}:{{seconds}}</timer>
+
+        <button ng-click="toggleTimer()">{{timerRunning ? "Stop" : "Start"}}</button>
+    </div>
+    <button ng-click="reset()">Reset</button>
+</body>
+
+</html>
